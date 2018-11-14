@@ -10,3 +10,8 @@ Skew-symmetric version of Self Avoiding Walk
     - Labs and evaluation function can be found [here](src/main/scala/main.scala#L4)  
   3. Try to understand your algorithm - implement it or write in pseudo code  
     - following the [PDF](docs/LABS+emas+memetic_PL.pdf), the code can be written [as follows]()
+  4. Prepare basic implementation which provides:
+    - calculation for specific sequence length,
+    - terminate after defined amount of time
+    - outputs periodicaly best achieved result
+    - constructs plot for time-result function
