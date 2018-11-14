@@ -1,3 +1,4 @@
+import scala.util.Random
 
 object HelloWorld {
 
@@ -24,6 +25,28 @@ object HelloWorld {
       }
   }
 
+  def randomSeq(seqs: Seq[Seq[Int]]): Seq[Int] = Random.shuffle(seqs).head
+
+  def neighbours(seq: Seq[Int]): Seq[Seq[Int]] = (0 until seq.length).map(i => seq.updated(i, seq(i)*(-1)))
+
+  def run(path: List[Seq[Int]], iter: Int): List[Seq[Int]] = {
+    //if (iter > 1000 || energy(path.last) < 10)
+    if (energy(path.last) < 10)
+      return path
+    else {
+        val ngbh = neighbours(path.last).filter(n => !path.contains(n)).map(n => (energy(n), n))
+        val (_, bestNeighbour) = ngbh.maxBy(_._1) //FIXME ngbh might be empty
+        run(path :+ bestNeighbour, iter + 1)
+      }
+    }
+  }
+
+  def selfAvoidingWalk(n: Int) = {
+    val intialSequence = randomSeq(allSeqs(Seq(1, -1), n))
+    val path = List(intialSequence)
+    run(path, 1000).map(seq => (energy(seq), seq)).maxBy(_._1)
+  }
+
   def main(args: Array[String]): Unit = {
     //allSeqs(Seq(-1, 1), 10)
     //	.map( seq => (energy(seq.toList), seq))
@@ -33,6 +56,8 @@ object HelloWorld {
     println(energy(Seq(1, -1, 1, -1, 1, -1, 1, 1))) //56
     println(energy(Seq(1, -1, 1, -1, 1, -1, -1, 1))) //36
     println(energy(Seq(1, 1, 1, -1, 1, -1, -1, 1))) //8
+
+    println(selfAvoidingWalk(10))
   }
 }
 
