@@ -1,2 +1,9 @@
 **/*.sw[po]
 **/*.class
+*.iml
+*.ipr
+*.iws
+.idea
+out
+target
+*.class
