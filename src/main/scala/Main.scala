@@ -2,6 +2,8 @@ import scala.util.Random
 
 object Main extends App {
 
+  type SeqEnergy = Tuple2[Double, Seq[Int]]
+
   def autocorr(seq: Seq[Int], k: Int): Double = {
     (0 until seq.length - k)
       .map(i => seq(i) * seq(i + k))
@@ -27,41 +29,53 @@ object Main extends App {
 
   def randomSeq(seqs: Seq[Seq[Int]]): Seq[Int] = Random.shuffle(seqs).head
 
-  def neighbours(seq: Seq[Int]): Seq[Seq[Int]] = (0 until seq.length).map(i => seq.updated(i, seq(i) * (-1)))
+  def neighbours(seq: Seq[Int]): Seq[Seq[Int]] = (0 until seq.length).map(i => seq.updated(i, seq(i) * -1))
 
   def run(path: List[Seq[Int]], iter: Int): List[Seq[Int]] = {
-    //if (iter > 1000 || energy(path.last) < 10)
-    if (energy(path.last) < 10)
+    if (iter > 10 || energy(path.last) < 10)
       path
     else {
       val ngbh = neighbours(path.last).filter(n => !path.contains(n)).map(n => (energy(n), n))
       if (ngbh.isEmpty) {
         path
       } else {
-        val (_, bestNeighbour) = ngbh.maxBy(_._1) //FIXME ngbh might be empty
+        val (_, bestNeighbour) = ngbh.minBy(_._1)
         run(path :+ bestNeighbour, iter + 1)
       }
 
     }
   }
 
-
-  def selfAvoidingWalk(n: Int) = {
+  def selfAvoidingWalk(n: Int): SeqEnergy = {
     val intialSequence = randomSeq(allSeqs(Seq(1, -1), n))
     val path = List(intialSequence)
-    run(path, 1000).map(seq => (energy(seq), seq)).maxBy(_._1)
+    run(path, 1000).map(seq => (energy(seq), seq)).minBy(_._1)
   }
 
-  //allSeqs(Seq(-1, 1), 10)
-  //	.map( seq => (energy(seq.toList), seq))
-  //	.minBy(_._1)
+  def workFor(n: Int, start: Long, bestPaths: List[SeqEnergy]): SeqEnergy = {
+    start.toLong + n*1000 compare System.currentTimeMillis() match {
+      case 0   => bestPaths.minBy(_._1)
+      case -1  => bestPaths.minBy(_._1)
+      case 1 => {
+        if (System.currentTimeMillis() % 5000 < 300) {
+          val (bestEnergy, bestSequence) = if (bestPaths.nonEmpty) bestPaths.minBy(_._1) else (99999999, Seq())
+          val meritFactor = scala.math.pow(bestSequence.length, 2) / (2 * bestEnergy.asInstanceOf[Double])
+          val now = System.currentTimeMillis()
+          println(s"Merit Factor: $meritFactor, Energy: $bestEnergy, Time: $now")
+        } else ()
+        workFor(n, start, bestPaths :+ selfAvoidingWalk(21))
+      }
+    }
+  }
 
+  def workFor(n: Int): Tuple2[Double, Seq[Int]] = workFor(n, System.currentTimeMillis(), List())
+
+ /*
   println(energy(Seq(1, -1, 1, -1, 1, -1, 1, -1))) //140
   println(energy(Seq(1, -1, 1, -1, 1, -1, 1, 1))) //56
   println(energy(Seq(1, -1, 1, -1, 1, -1, -1, 1))) //36
   println(energy(Seq(1, 1, 1, -1, 1, -1, -1, 1))) //8
-
-  println(selfAvoidingWalk(10))
-
+  */
+  workFor(600) // 10 minutes
 }
 
