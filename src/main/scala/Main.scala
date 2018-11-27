@@ -2,7 +2,7 @@ import scala.util.Random
 
 object Main extends App {
 
-  type SeqEnergy = Tuple2[Double, Seq[Int]]
+  type SeqEnergy = (Double, Seq[Int])
 
   def autocorr(seq: Seq[Int], k: Int): Double = {
     (0 until seq.length - k)
@@ -10,13 +10,24 @@ object Main extends App {
       .sum
   }
 
-  def energy(seq: Seq[Int]): Double = {
-    (1 until seq.length)
+  def skewEnergy(seq: Seq[Int]): Double = {
+    energy(generateSkewSymmetry(seq), 2)
+  }
+
+  def energy(seq: Seq[Int], step: Int = 1): Double = {
+    (1 until seq.length by step)
       .map { i =>
         val corr = autocorr(seq, i)
         corr * corr
       }
       .sum
+  }
+
+  def generateSkewSymmetry(elements: Seq[Int]): Seq[Int] = {
+    elements ++ elements.dropRight(1).zipWithIndex.map {
+      case (element, index) if index % 2 == 0 => element
+      case (element, _) => -element
+    }.reverse
   }
 
   def allSeqs(elements: Seq[Int], len: Int): Seq[Seq[Int]] = {
@@ -32,10 +43,11 @@ object Main extends App {
   def neighbours(seq: Seq[Int]): Seq[Seq[Int]] = (0 until seq.length).map(i => seq.updated(i, seq(i) * -1))
 
   def run(path: List[Seq[Int]], iter: Int): List[Seq[Int]] = {
-    if (iter > 10 || energy(path.last) < 10)
+    if (iter > 10 || skewEnergy(path.last) < 10)
       path
     else {
-      val ngbh = neighbours(path.last).filter(n => !path.contains(n)).map(n => (energy(n), n))
+      val ngbh = neighbours(path.last).filter(n => !path.contains(n)).map(
+        n => (skewEnergy(n), n))
       if (ngbh.isEmpty) {
         path
       } else {
@@ -49,7 +61,10 @@ object Main extends App {
   def selfAvoidingWalk(n: Int): SeqEnergy = {
     val intialSequence = randomSeq(allSeqs(Seq(1, -1), n))
     val path = List(intialSequence)
-    run(path, 1000).map(seq => (energy(seq), seq)).minBy(_._1)
+    run(path, 1000)
+      .map(generateSkewSymmetry)
+      .map(seq => (energy(seq), seq))
+      .minBy(_._1)
   }
 
   def workFor(n: Int, start: Long, bestPaths: List[SeqEnergy]): SeqEnergy = {
@@ -68,8 +83,7 @@ object Main extends App {
     }
   }
 
-  def workFor(n: Int): Tuple2[Double, Seq[Int]] = workFor(n, System.currentTimeMillis(), List())
-
+  def workFor(n: Int): (Double, Seq[Int]) = workFor(n, System.currentTimeMillis(), List())
  /*
   println(energy(Seq(1, -1, 1, -1, 1, -1, 1, -1))) //140
   println(energy(Seq(1, -1, 1, -1, 1, -1, 1, 1))) //56
