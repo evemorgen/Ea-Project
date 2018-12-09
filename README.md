@@ -14,4 +14,13 @@ Skew-symmetric version of Self Avoiding Walk
     - calculation for specific sequence length,  
     - terminate after defined amount of time,  
     - outputs periodicaly best achieved result,  
-    - constructs plot for time-result function,  
+    - constructs plot for time-result function
+
+----------
+
+## Usage
+
+### To run, place config file in `src/main/resources`
+```
+sbt "run -c config_file_in_resources.conf -o output_logfile.log"
+```
