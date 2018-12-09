@@ -1,4 +1,9 @@
 import scala.util.Random
+import com.typesafe.config.ConfigFactory
+import com.concurrentthought.cla.Opt
+import com.concurrentthought.cla.Args
+import grizzled.slf4j.Logger
+import org.slf4j.MDC
 
 object Main extends App {
 
@@ -43,7 +48,7 @@ object Main extends App {
   def neighbours(seq: Seq[Int]): Seq[Seq[Int]] = (0 until seq.length).map(i => seq.updated(i, seq(i) * -1))
 
   def run(path: List[Seq[Int]], iter: Int): List[Seq[Int]] = {
-    if (iter > 10 || skewEnergy(path.last) < 10)
+    if (iter > config.getInt("iterationsNumber") || skewEnergy(path.last) < config.getInt("energyThreshold"))
       path
     else {
       val ngbh = neighbours(path.last).filter(n => !path.contains(n)).map(
@@ -61,7 +66,7 @@ object Main extends App {
   def selfAvoidingWalk(n: Int): SeqEnergy = {
     val intialSequence = randomSeq(allSeqs(Seq(1, -1), n))
     val path = List(intialSequence)
-    run(path, 1000)
+    run(path, 0)
       .map(generateSkewSymmetry)
       .map(seq => (energy(seq), seq))
       .minBy(_._1)
@@ -72,13 +77,16 @@ object Main extends App {
       case 0   => bestPaths.minBy(_._1)
       case -1  => bestPaths.minBy(_._1)
       case 1 => {
-        if (System.currentTimeMillis() % 5000 < 300) {
-          val (bestEnergy, bestSequence) = if (bestPaths.nonEmpty) bestPaths.minBy(_._1) else (99999999, Seq())
+        //FIXME - it prints multiple values at once
+        if (System.currentTimeMillis() % config.getInt("printEvery") * 1000 < 300) {
+          val (bestEnergy, bestSequence) = if (bestPaths.nonEmpty) bestPaths.minBy(_._1) else (config.getInt("bigNumber"), Seq())
           val meritFactor = scala.math.pow(bestSequence.length, 2) / (2 * bestEnergy.asInstanceOf[Double])
           val now = System.currentTimeMillis()
-          println(s"Merit Factor: $meritFactor, Energy: $bestEnergy, Time: $now")
+          val outputStr = s"Merit Factor: $meritFactor, Energy: $bestEnergy, Time: $now"
+          logger.info(outputStr)
+
         } else ()
-        workFor(n, start, bestPaths :+ selfAvoidingWalk(21))
+        workFor(n, start, bestPaths :+ selfAvoidingWalk(config.getInt("seriesLength")))
       }
     }
   }
@@ -90,6 +98,24 @@ object Main extends App {
   println(energy(Seq(1, -1, 1, -1, 1, -1, -1, 1))) //36
   println(energy(Seq(1, 1, 1, -1, 1, -1, -1, 1))) //8
   */
-  workFor(600) // 10 minutes
-}
 
+  val conf  = Opt.string(
+      name     = "conf",
+      flags    = Seq("-c", "--config"),
+      help     = "Path to config file.",
+      requiredFlag = true)
+  
+  val output = Opt.string(
+      name     = "output",
+      flags    = Seq("-o", "--out"),
+      default  = Some("/dev/null"),
+      help     = "Path to output file.")
+
+  val finalArgs: Args = Args(Seq(conf, output)).process(args)
+  print(finalArgs.getOrElse("conf", false))
+  val config = ConfigFactory.load(finalArgs.getOrElse("conf", "default.conf")).getConfig("ea")
+  MDC.put("logFileName", finalArgs.getOrElse("output", "ea.log"))
+  val logger = Logger("ea")
+
+  workFor(config.getInt("time"))
+}
