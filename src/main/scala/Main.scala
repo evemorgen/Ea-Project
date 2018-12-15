@@ -72,25 +72,25 @@ object Main extends App {
       .minBy(_._1)
   }
 
-  def workFor(n: Int, start: Long, bestPaths: List[SeqEnergy]): SeqEnergy = {
+  def workFor(n: Int, start: Long, bestPaths: List[SeqEnergy], lastLog: Long): SeqEnergy = {
     start.toLong + n*1000 compare System.currentTimeMillis() match {
       case 0   => bestPaths.minBy(_._1)
       case -1  => bestPaths.minBy(_._1)
       case 1 => {
         //FIXME - it prints multiple values at once
-        if (System.currentTimeMillis() % config.getInt("printEvery") * 1000 < 300) {
+        val now = System.currentTimeMillis()
+        if (now % config.getInt("printEvery") * 1000 < 300 && now - lastLog > config.getInt("printEvery") * 1000) {
           val (bestEnergy, bestSequence) = if (bestPaths.nonEmpty) bestPaths.minBy(_._1) else (config.getInt("bigNumber"), Seq())
           val meritFactor = scala.math.pow(bestSequence.length, 2) / (2 * bestEnergy.asInstanceOf[Double])
           val now = System.currentTimeMillis()
-          val outputStr = s"Merit Factor: $meritFactor, Energy: $bestEnergy, Time: $now"
-          logger.info(outputStr)
-        } else ()
-        workFor(n, start, bestPaths :+ selfAvoidingWalk(config.getInt("seriesLength")))
+          logger.info(s"Merit Factor: $meritFactor, Energy: $bestEnergy, Time: $now")
+          workFor(n, start, bestPaths :+ selfAvoidingWalk(config.getInt("seriesLength")), now)
+        } else workFor(n, start, bestPaths :+ selfAvoidingWalk(config.getInt("seriesLength")), lastLog)
       }
     }
   }
 
-  def workFor(n: Int): (Double, Seq[Int]) = workFor(n, System.currentTimeMillis(), List())
+  def workFor(n: Int): (Double, Seq[Int]) = workFor(n, System.currentTimeMillis(), List(), 0)
  /*
   println(energy(Seq(1, -1, 1, -1, 1, -1, 1, -1))) //140
   println(energy(Seq(1, -1, 1, -1, 1, -1, 1, 1))) //56
