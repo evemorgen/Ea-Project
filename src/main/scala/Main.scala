@@ -84,7 +84,6 @@ object Main extends App {
           val now = System.currentTimeMillis()
           val outputStr = s"Merit Factor: $meritFactor, Energy: $bestEnergy, Time: $now"
           logger.info(outputStr)
-
         } else ()
         workFor(n, start, bestPaths :+ selfAvoidingWalk(config.getInt("seriesLength")))
       }
@@ -114,7 +113,7 @@ object Main extends App {
   val finalArgs: Args = Args(Seq(conf, output)).process(args)
   print(finalArgs.getOrElse("conf", false))
   val config = ConfigFactory.load(finalArgs.getOrElse("conf", "default.conf")).getConfig("ea")
-  MDC.put("logFileName", finalArgs.getOrElse("output", "ea.log"))
+  System.setProperty("log.name", finalArgs.getOrElse("output", "ea.log"))
   val logger = Logger("ea")
 
   workFor(config.getInt("time"))
