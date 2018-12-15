@@ -117,4 +117,5 @@ object Main extends App {
   val logger = Logger("ea")
 
   workFor(config.getInt("time"))
+  logger.info("------------")
 }
