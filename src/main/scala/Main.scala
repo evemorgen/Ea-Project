@@ -79,7 +79,7 @@ object Main extends App {
       case 1 => {
         //FIXME - it prints multiple values at once
         val now = System.currentTimeMillis()
-        if (now % config.getInt("printEvery") * 1000 < 300 && now - lastLog > config.getInt("printEvery") * 1000) {
+        if (now - lastLog > config.getInt("printEvery") * 1000) {
           val (bestEnergy, bestSequence) = if (bestPaths.nonEmpty) bestPaths.minBy(_._1) else (config.getInt("bigNumber"), Seq())
           val meritFactor = scala.math.pow(bestSequence.length, 2) / (2 * bestEnergy.asInstanceOf[Double])
           val now = System.currentTimeMillis()
