@@ -1,9 +1,9 @@
-import scala.util.Random
-import com.typesafe.config.ConfigFactory
-import com.concurrentthought.cla.Opt
-import com.concurrentthought.cla.Args
+import com.concurrentthought.cla.{Args, Opt}
+import com.typesafe.config.{ConfigFactory, Config}
 import grizzled.slf4j.Logger
-import org.slf4j.MDC
+
+import scala.annotation.tailrec
+import scala.util.Random
 
 object Main extends App {
 
@@ -35,44 +35,42 @@ object Main extends App {
     }.reverse
   }
 
-  def allSeqs(elements: Seq[Int], len: Int): Seq[Seq[Int]] = {
-    (1 to len)
-      .map(_ => elements)
-      .foldLeft(Seq(Seq.empty[Int])) {
-        (x, y) => for (a <- x.view; b <- y) yield a :+ b
-      }
-  }
-
-  def randomSeq(seqs: Seq[Seq[Int]]): Seq[Int] = Random.shuffle(seqs).head
+  def randomSeq(n: Int): Seq[Int] = (1 to n).map(_ => Random.shuffle(Seq(1, -1)).head)
 
   def neighbours(seq: Seq[Int]): Seq[Seq[Int]] = (0 until seq.length).map(i => seq.updated(i, seq(i) * -1))
 
-  def run(path: List[Seq[Int]], iter: Int): List[Seq[Int]] = {
-    if (iter > config.getInt("iterationsNumber") || skewEnergy(path.last) < config.getInt("energyThreshold"))
+  @tailrec
+  def run(path: List[Seq[Int]], iter: Int, config: Config): List[Seq[Int]] = {
+    if (iter > config.getInt("iterationsNumber") ||
+        skewEnergy(path.last) < config.getInt("energyThreshold")
+    )
       path
     else {
-      val ngbh = neighbours(path.last).filter(n => !path.contains(n)).map(
-        n => (skewEnergy(n), n))
+      val ngbh = neighbours(generateSkewSymmetry(path.last))
+                  .filter(n => !path.contains(n.slice(0, (n.length+1)/2)))
+                  .map(n => (energy(n.slice(0, (n.length+1)/2)), n))
       if (ngbh.isEmpty) {
         path
       } else {
-        val (_, bestNeighbour) = ngbh.minBy(_._1)
-        run(path :+ bestNeighbour, iter + 1)
+        val (bestValue, bestNeighbour) = ngbh.minBy(_._1)
+        run(path :+ bestNeighbour.slice(0, (bestNeighbour.length+1)/2), iter + 1, config)
       }
 
     }
   }
 
-  def selfAvoidingWalk(n: Int): SeqEnergy = {
-    val intialSequence = randomSeq(allSeqs(Seq(1, -1), n))
+  def selfAvoidingWalk(config: Config): SeqEnergy = {
+    val n = config.getInt("seriesLength")
+    val intialSequence = randomSeq((n/2).toInt + 1)
     val path = List(intialSequence)
-    run(path, 0)
+    run(path, 0, config)
       .map(generateSkewSymmetry)
       .map(seq => (energy(seq), seq))
       .minBy(_._1)
   }
 
-  def workFor(n: Int, start: Double, bestPaths: List[SeqEnergy], lastLog: Double): SeqEnergy = {
+  def workFor(start: Double, bestPaths: List[SeqEnergy], lastLog: Double, config: Config): SeqEnergy = {
+    val n = config.getInt("time")
     start.toDouble + n.toDouble*1000 compare System.currentTimeMillis() match {
       case 0   => bestPaths.minBy(_._1)
       case -1  => bestPaths.minBy(_._1)
@@ -83,20 +81,14 @@ object Main extends App {
           val (bestEnergy, bestSequence) = if (bestPaths.nonEmpty) bestPaths.minBy(_._1) else (config.getDouble("bigNumber"), Seq())
           val meritFactor = scala.math.pow(bestSequence.length.toDouble, 2.0) / (2.0 * bestEnergy.asInstanceOf[Double])
           val now = System.currentTimeMillis()
-          logger.info(s"Merit Factor: $meritFactor, Energy: $bestEnergy, Time: $now")
-          workFor(n, start, bestPaths :+ selfAvoidingWalk(config.getInt("seriesLength")), now)
-        } else workFor(n, start, bestPaths :+ selfAvoidingWalk(config.getInt("seriesLength")), lastLog)
+          logger.info(s"Merit Factor: $meritFactor, Energy: $bestEnergy, Time: $now, seq: $bestSequence")
+          workFor(start, bestPaths :+ selfAvoidingWalk(config), now, config)
+        } else workFor(start, bestPaths :+ selfAvoidingWalk(config), lastLog, config)
       }
     }
   }
 
-  def workFor(n: Int): (Double, Seq[Int]) = workFor(n, System.currentTimeMillis(), List(), 0.0)
- /*
-  println(energy(Seq(1, -1, 1, -1, 1, -1, 1, -1))) //140
-  println(energy(Seq(1, -1, 1, -1, 1, -1, 1, 1))) //56
-  println(energy(Seq(1, -1, 1, -1, 1, -1, -1, 1))) //36
-  println(energy(Seq(1, 1, 1, -1, 1, -1, -1, 1))) //8
-  */
+  def workFor(config: Config): (Double, Seq[Int]) = workFor(System.currentTimeMillis(), List(), 0.0, config)
 
   val conf  = Opt.string(
       name     = "conf",
@@ -111,11 +103,12 @@ object Main extends App {
       help     = "Path to output file.")
 
   val finalArgs: Args = Args(Seq(conf, output)).process(args)
-  print(finalArgs.getOrElse("conf", false))
   val config = ConfigFactory.load(finalArgs.getOrElse("conf", "default.conf")).getConfig("ea")
   System.setProperty("log.name", finalArgs.getOrElse("output", "ea.log"))
   val logger = Logger("ea")
-
-  workFor(config.getInt("time"))
+  //workFor(config)
+  val seq = Seq(1, 1, 1, 1, 1, 1, 1, -1, -1, 1, -1, -1, 1, -1, 1, 1, -1, -1, -1, 1, 1, -1, 1, -1, 1, -1, 1)
+  println(energy(seq))
+  println(energy(seq.slice(0, 13)))
   logger.info("------------")
 }
