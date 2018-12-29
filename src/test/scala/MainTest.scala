@@ -30,9 +30,9 @@ class MainTest extends FunSuite with MockitoSugar {
       (Seq(-1, -1, -1, -1, -1, 1, 1).length * 2 - 1)
     )
 
-    val seq = Seq(-1, -1, -1, -1, -1, 1, 1)
     assert(
-      Main.energy(seq, 2) === Main.skewEnergy(seq)
+      Main.energy(Seq(-1, -1, -1, -1, -1, 1, 1, -1, -1, 1, -1, 1, -1)) ===
+        Main.skewEnergy(Seq(-1, -1, -1, -1, -1, 1, 1))
     )
   }
 

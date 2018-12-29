@@ -16,11 +16,11 @@ object Main extends App {
   }
 
   def skewEnergy(seq: Seq[Int]): Double = {
-    energy(generateSkewSymmetry(seq), 2)
+    energy(generateSkewSymmetry(seq), 2,2)
   }
 
-  def energy(seq: Seq[Int], step: Int = 1): Double = {
-    (1 until seq.length by step)
+  def energy(seq: Seq[Int], step: Int = 1, start: Int = 1): Double = {
+    (start until seq.length by step)
       .map { i =>
         val corr = autocorr(seq, i)
         corr * corr
