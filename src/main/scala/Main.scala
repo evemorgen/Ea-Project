@@ -16,7 +16,7 @@ object Main extends App {
   }
 
   def skewEnergy(seq: Seq[Int]): Double = {
-    energy(generateSkewSymmetry(seq), 2,2)
+    energy(generateSkewSymmetry(seq), 2, 2)
   }
 
   def energy(seq: Seq[Int], step: Int = 1, start: Int = 1): Double = {
@@ -30,38 +30,37 @@ object Main extends App {
 
   def generateSkewSymmetry(elements: Seq[Int]): Seq[Int] = {
     elements ++ elements.dropRight(1).zipWithIndex.map {
-      case (element, index) if index % 2 == 0 => element
+      case (element, index) if index % 2 == 1 => element
       case (element, _) => -element
     }.reverse
   }
 
   def randomSeq(n: Int): Seq[Int] = (1 to n).map(_ => Random.shuffle(Seq(1, -1)).head)
 
-  def neighbours(seq: Seq[Int]): Seq[Seq[Int]] = (0 until seq.length).map(i => seq.updated(i, seq(i) * -1))
+  def neighbours(seq: Seq[Int]): Seq[Seq[Int]] = seq.indices.map(i => seq.updated(i, seq(i) * -1))
 
   @tailrec
   def run(path: List[Seq[Int]], iter: Int, config: Config): List[Seq[Int]] = {
     if (iter > config.getInt("iterationsNumber") ||
-        skewEnergy(path.last) < config.getInt("energyThreshold")
+      skewEnergy(path.last) < config.getInt("energyThreshold")
     )
       path
     else {
-      val ngbh = neighbours(generateSkewSymmetry(path.last))
-                  .filter(n => !path.contains(n.slice(0, (n.length+1)/2)))
-                  .map(n => (energy(n.slice(0, (n.length+1)/2)), n))
+      val ngbh = neighbours(path.last)
+        .filter(n => !path.contains(n))
+        .map(n => (skewEnergy(n), n))
       if (ngbh.isEmpty) {
         path
       } else {
         val (bestValue, bestNeighbour) = ngbh.minBy(_._1)
-        run(path :+ bestNeighbour.slice(0, (bestNeighbour.length+1)/2), iter + 1, config)
+        run(path :+ bestNeighbour, iter + 1, config)
       }
-
     }
   }
 
   def selfAvoidingWalk(config: Config): SeqEnergy = {
     val n = config.getInt("seriesLength")
-    val intialSequence = randomSeq((n/2).toInt + 1)
+    val intialSequence = randomSeq((n / 2).toInt + 1)
     val path = List(intialSequence)
     run(path, 0, config)
       .map(generateSkewSymmetry)
@@ -71,9 +70,9 @@ object Main extends App {
 
   def workFor(start: Double, bestPaths: List[SeqEnergy], lastLog: Double, config: Config): SeqEnergy = {
     val n = config.getInt("time")
-    start.toDouble + n.toDouble*1000 compare System.currentTimeMillis() match {
-      case 0   => bestPaths.minBy(_._1)
-      case -1  => bestPaths.minBy(_._1)
+    start.toDouble + n.toDouble * 1000 compare System.currentTimeMillis() match {
+      case 0 => bestPaths.minBy(_._1)
+      case -1 => bestPaths.minBy(_._1)
       case 1 => {
         //FIXME - it prints multiple values at once
         val now = System.currentTimeMillis()
@@ -82,33 +81,39 @@ object Main extends App {
           val meritFactor = scala.math.pow(bestSequence.length.toDouble, 2.0) / (2.0 * bestEnergy.asInstanceOf[Double])
           val now = System.currentTimeMillis()
           logger.info(s"Merit Factor: $meritFactor, Energy: $bestEnergy, Time: $now, seq: $bestSequence")
-          workFor(start, bestPaths :+ selfAvoidingWalk(config), now, config)
-        } else workFor(start, bestPaths :+ selfAvoidingWalk(config), lastLog, config)
+          workFor(start, bestPaths ++ parSelfAvoidingWalk(config), now, config)
+        } else workFor(start, bestPaths ++ parSelfAvoidingWalk(config), lastLog, config)
       }
     }
   }
 
+  private def parSelfAvoidingWalk(config: Config)
+    = (0 until Runtime.getRuntime.availableProcessors).par.map(_ => selfAvoidingWalk(config))
+
   def workFor(config: Config): (Double, Seq[Int]) = workFor(System.currentTimeMillis(), List(), 0.0, config)
 
-  val conf  = Opt.string(
-      name     = "conf",
-      flags    = Seq("-c", "--config"),
-      help     = "Path to config file.",
-      requiredFlag = true)
-  
+  val conf = Opt.string(
+    name = "conf",
+    flags = Seq("-c", "--config"),
+    help = "Path to config file.",
+    requiredFlag = true)
+
   val output = Opt.string(
-      name     = "output",
-      flags    = Seq("-o", "--out"),
-      default  = Some("/dev/null"),
-      help     = "Path to output file.")
+    name = "output",
+    flags = Seq("-o", "--out"),
+    default = Some("/dev/null"),
+    help = "Path to output file.")
 
   val finalArgs: Args = Args(Seq(conf, output)).process(args)
   val config = ConfigFactory.load(finalArgs.getOrElse("conf", "default.conf")).getConfig("ea")
   System.setProperty("log.name", finalArgs.getOrElse("output", "ea.log"))
   val logger = Logger("ea")
-  //workFor(config)
-  val seq = Seq(1, 1, 1, 1, 1, 1, 1, -1, -1, 1, -1, -1, 1, -1, 1, 1, -1, -1, -1, 1, 1, -1, 1, -1, 1, -1, 1)
-  println(energy(seq))
-  println(energy(seq.slice(0, 13)))
+  workFor(config)
+  //  val seq = Seq(1, 1, 1, 1, 1, 1, 1, -1, -1, 1, -1, -1, 1, -1, 1, 1, -1, -1, -1, 1, 1, -1, 1, -1, 1, -1, 1)
+  //  val seq = Seq(-1,-1,-1,1,1,1,1,-1,-1,-1,1,-1,-1,-1,1,-1,-1,-1,1,-1,-1,1,-1,1,1,-1,1)
+  //  println(seq)
+  //  println(generateSkewSymmetry(seq.slice(0, 14)))
+  //  println(energy(seq))
+  //  println(skewEnergy(seq.slice(0, 14)))
   logger.info("------------")
 }
