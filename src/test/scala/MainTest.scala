@@ -22,7 +22,7 @@ class MainTest extends FunSuite with MockitoSugar {
   test("Skew sequence generation works") {
     assert(
       Main.generateSkewSymmetry(Seq(-1, -1, -1, -1, -1, 1, 1)) ===
-      Seq(-1, -1, -1, -1, -1, 1, 1, 1, 1, -1, 1, -1, 1)
+      Seq(-1, -1, -1, -1, -1, 1, 1, -1, -1, 1, -1, 1, -1)
     )
 
     assert(
@@ -77,7 +77,8 @@ class MainTest extends FunSuite with MockitoSugar {
 
 
     val res = Main.run(List(initialSequence), 1, config)
-    assert(res === List(Seq(1, 1, 1), Seq(-1, 1, 1)))
+    assert(res === List(Seq(1, 1, 1), Seq(1, -1, 1)))
+    assert(Main.skewEnergy(Seq(-1, 1, 1)) >= Main.skewEnergy(Seq(1, -1, 1)))
   }
 }
 

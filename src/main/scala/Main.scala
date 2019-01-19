@@ -29,10 +29,10 @@ object Main extends App {
   }
 
   def generateSkewSymmetry(elements: Seq[Int]): Seq[Int] = {
-    elements ++ elements.dropRight(1).zipWithIndex.map {
-      case (element, index) if index % 2 == 1 => element
-      case (element, _) => -element
-    }.reverse
+    elements ++ elements.dropRight(1).reverse.zipWithIndex.map {
+      case (element, index) if (index+1) % 2 == 1 => -element
+      case (element, _) => element
+    }
   }
 
   def randomSeq(n: Int): Seq[Int] = (1 to n).map(_ => Random.shuffle(Seq(1, -1)).head)
@@ -89,6 +89,7 @@ object Main extends App {
 
   private def parSelfAvoidingWalk(config: Config)
     = (0 until Runtime.getRuntime.availableProcessors).par.map(_ => selfAvoidingWalk(config))
+//    = Seq(selfAvoidingWalk(config))
 
   def workFor(config: Config): (Double, Seq[Int]) = workFor(System.currentTimeMillis(), List(), 0.0, config)
 
