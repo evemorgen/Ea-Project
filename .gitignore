@@ -9,3 +9,5 @@ target
 *.class
 **/*.log
 project/
+ENV/
+results/
