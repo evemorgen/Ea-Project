@@ -74,15 +74,20 @@ object Main extends App {
       case 0 => bestPaths.minBy(_._1)
       case -1 => bestPaths.minBy(_._1)
       case 1 => {
-        //FIXME - it prints multiple values at once
         val now = System.currentTimeMillis()
-        if (now - lastLog > config.getDouble("printEvery") * 1000) {
-          val (bestEnergy, bestSequence) = if (bestPaths.nonEmpty) bestPaths.minBy(_._1) else (config.getDouble("bigNumber"), Seq())
-          val meritFactor = scala.math.pow(bestSequence.length.toDouble, 2.0) / (2.0 * bestEnergy.asInstanceOf[Double])
-          val now = System.currentTimeMillis()
-          logger.info(s"Merit Factor: $meritFactor, Energy: $bestEnergy, Time: $now, seq: $bestSequence")
-          workFor(start, bestPaths ++ parSelfAvoidingWalk(config), now, config)
-        } else workFor(start, bestPaths ++ parSelfAvoidingWalk(config), lastLog, config)
+        val (bestEnergy, bestSequence) = if (bestPaths.nonEmpty) bestPaths.minBy(_._1) else (config.getDouble("bigNumber"), Seq())
+        bestEnergy compare config.getDouble("energyThreshold") match {
+          case 0 => (bestEnergy, bestSequence)
+          case -1 => (bestEnergy, bestSequence)
+          case 1 => {
+            if (now - lastLog > config.getDouble("printEvery") * 1000) {
+              val meritFactor = scala.math.pow(bestSequence.length.toDouble, 2.0) / (2.0 * bestEnergy.asInstanceOf[Double])
+              val now = System.currentTimeMillis()
+              logger.info(s"Merit Factor: $meritFactor, Energy: $bestEnergy, Time: $now, seq: $bestSequence")
+              workFor(start, bestPaths ++ parSelfAvoidingWalk(config), now, config)
+            } else workFor(start, bestPaths ++ parSelfAvoidingWalk(config), lastLog, config)
+          }
+        }
       }
     }
   }
